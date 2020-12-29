@@ -23,14 +23,21 @@ def get_timeseries(n):
     # ensure reproducible results. also ensures that plotted timeseries is the same used to get sax
     np.random.seed(seed=133742)
     x = np.arange(n)
-    y = np.array([4*np.exp(0.005 * (i + np.random.normal(0, 10))) for i in x])
+    # generate timeseries that represents an exponential growth with added gaussian noise
+    y = np.array([100*np.exp(0.005 * (i + np.random.normal(0, 10))) for i in x])
     return x, y
 
 def get_paa(ts, w):
+    # apply piecewise aggregate approximation in w dimensions
     ts_paa = paa(ts, w)
+    # TODO: check if repeats are appropriate
     return np.repeat(ts_paa, len(ts)//w)
 
 def get_sax_repr(ts, w, a):
+    # as depicted in "iSAX: Indexing and Mining Terabyte Sized Time Series" (Shieh, Keogh)
+    # a normalized timeseries should be used for SAX, since values should be splitted by assuming
+    # a density described by normal distribution N(mu=0, sigma=1). A PAA is performed prior to
+    # ensure timesereis is described by a short string of symbols.
     ts_normed = znorm(ts)
     ts_paa = paa(ts_normed, w)
     word = ts_to_string(ts_paa, cuts_for_asize(a))

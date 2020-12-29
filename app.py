@@ -18,6 +18,7 @@ from saxpy.sax import ts_to_string
 from saxpy.alphabet import cuts_for_asize
 
 
+# ---------- utility functions ----------
 def get_timeseries(n):
     # ensure reproducible results. also ensures that plotted timeseries is the same used to get sax
     np.random.seed(seed=133742)
@@ -39,11 +40,10 @@ def get_sax_symbol_frequency(word):
     return {key: word.count(key) for key in set(word)}
 
 
+# ---------- app setup ----------
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-
-# sax_repr = get_sax_repr(ts=y, w=W, a=A)
 
 app.layout = html.Div(children=[
     html.H1(children='SAX Sandbox'),
@@ -85,6 +85,7 @@ app.layout = html.Div(children=[
 ])
 
 
+# ---------- callbacks / add reactivity ----------
 @app.callback(
     dash.dependencies.Output('graph', 'figure'),
     [
@@ -118,5 +119,7 @@ def set_display_sax_repr(n, w, a):
     sax_repr = get_sax_repr(ts=y, w=w, a=a)
     return f"The SAX representation of the timeseries is: {sax_repr}. With frequencies of letters: {get_sax_symbol_frequency(sax_repr)}"
 
+
+# ---------- main ----------
 if __name__ == '__main__':
     app.run_server(debug=True)

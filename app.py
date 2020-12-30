@@ -61,46 +61,70 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.layout = html.Div(children=[
     html.H1(children='SAX Sandbox'),
 
-    html.Label('Size of Dataset N'),
-    dcc.Slider(
-        id="dataset-size-slider",
-        min=32,
-        max=1024,
-        step=32,
-        value=512,
-        marks={i: str(i) for i in range(32, 1024+1, 32)},
-    ),
-    html.Label('Number of PAA batches w'),
-    # check for conistency if N%w != 0
-    dcc.Slider(
-        id="paa-batches-slider",
-        min=4,
-        max=16,
-        step=2,
-        value=8,
-        marks={i: str(i) for i in range(4, 16+1, 2)},
-    ),
-    html.Label('Number of SAX symbols a'),
-    dcc.Slider(
-        id="sax-symbols-slider",
-        min=2,
-        max=8,
-        step=2,
-        value=4,
-        marks={i: str(i) for i in range(2, 8+1, 2)},
-    ),
+    html.Div(children=[
+        html.Div(children=[
+            html.Label('Size of Dataset N'),
+            dcc.Slider(
+                id="dataset-size-slider",
+                min=32,
+                max=1024,
+                step=32,
+                value=512,
+                marks={i: str(i) for i in range(32, 1024+1, 32)},
+            ),
+        ], className="eight columns"),
+        html.Div(children=[
+            html.Label('Number of PAA batches w'),
+            # check for conistency if N%w != 0
+            dcc.Slider(
+                id="paa-batches-slider",
+                min=4,
+                max=16,
+                step=2,
+                value=8,
+                marks={i: str(i) for i in range(4, 16+1, 2)},
+            ),
+        ], className="two columns"),
+        html.Div(children=[
+            html.Label('Number of SAX symbols a'),
+            dcc.Slider(
+                id="sax-symbols-slider",
+                min=2,
+                max=8,
+                step=2,
+                value=4,
+                marks={i: str(i) for i in range(2, 8+1, 2)},
+            ),
+        ], className="two columns")
+    ], className="row"),
+
     html.Div(style={"margin": "30px"}),
 
-    dcc.Graph(
-        id='graph-exponential'
+    html.Div(children=[
+            dcc.Graph(
+                id='graph-exponential',
+                className="eight columns"
+            ),
+            dcc.Graph(
+                id='bar-exponential',
+                className="four columns"
+            ),
+        ],
+        className='row'
     ),
-    html.Div(id='display-sax-representation-exponential'),
     
-    dcc.Graph(
-        id='graph-sinus'
+    html.Div(children=[
+            dcc.Graph(
+                id='graph-sinus',
+                className="eight columns"
+            ),
+            dcc.Graph(
+                id='bar-sinus',
+                className="four columns"
+            ),
+        ],
+        className='row'
     ),
-    html.Div(id='display-sax-representation-sinus'),
-    
 ])
 
 
@@ -126,17 +150,29 @@ def update_graph_exp(n, w):
     return fig
 
 @app.callback(
-    dash.dependencies.Output('display-sax-representation-exponential', 'children'),
+    dash.dependencies.Output('bar-exponential', 'figure'),
     [
         dash.dependencies.Input('dataset-size-slider', 'value'),
         dash.dependencies.Input('paa-batches-slider', 'value'),
         dash.dependencies.Input('sax-symbols-slider', 'value'),
     ]
 )
-def set_display_sax_repr_exp(n, w, a):
+def update_bar_exp(n, w, a):
     _, y = get_timeseries(n=n, fct=exponential)
     sax_repr = get_sax_repr(ts=y, w=w, a=a)
-    return f"The SAX representation of the timeseries is: {sax_repr}. With frequencies of letters: {get_sax_symbol_frequency(sax_repr)}"
+    hist = pd.Series([c for c in sax_repr]).value_counts().sort_index()
+
+    fig = go.Figure(data=[go.Bar(
+        x=hist.index,
+        y=hist.values,
+        text=y,
+    )])
+    fig.update_layout(
+        title={'text': f'Histogram of SAX Symbols. SAX String: {sax_repr}'},
+        xaxis={'title': 'symbol'},
+        yaxis={'title': 'frequency'},
+    )
+    return fig
 
 @app.callback(
     dash.dependencies.Output('graph-sinus', 'figure'),
@@ -159,19 +195,29 @@ def update_graph_sin(n, w):
     return fig
 
 @app.callback(
-    dash.dependencies.Output('display-sax-representation-sinus', 'children'),
+    dash.dependencies.Output('bar-sinus', 'figure'),
     [
         dash.dependencies.Input('dataset-size-slider', 'value'),
         dash.dependencies.Input('paa-batches-slider', 'value'),
         dash.dependencies.Input('sax-symbols-slider', 'value'),
     ]
 )
-def set_display_sax_repr_sin(n, w, a):
+def update_bar_sin(n, w, a):
     _, y = get_timeseries(n=n, fct=sinus)
     sax_repr = get_sax_repr(ts=y, w=w, a=a)
-    return f"The SAX representation of the timeseries is: {sax_repr}. With frequencies of letters: {get_sax_symbol_frequency(sax_repr)}"
+    hist = pd.Series([c for c in sax_repr]).value_counts().sort_index()
 
-
+    fig = go.Figure(data=[go.Bar(
+        x=hist.index,
+        y=hist.values,
+        text=y,
+    )])
+    fig.update_layout(
+        title={'text': f'Histogram of SAX Symbols. SAX String: {sax_repr}'},
+        xaxis={'title': 'symbol'},
+        yaxis={'title': 'frequency'},
+    )
+    return fig
 
 
 # ---------- main ----------

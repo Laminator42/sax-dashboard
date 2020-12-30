@@ -19,12 +19,18 @@ from saxpy.alphabet import cuts_for_asize
 
 
 # ---------- utility functions ----------
-def get_timeseries(n):
+def exponential(n):
+    return np.array([100*np.exp(0.005 * i) for i in range(n)])
+
+def sinus(n):
+    return np.array([123*np.sin(2*np.pi/200 * i) + 42 for i in range(n)])
+
+def get_timeseries(n, fct):
     # ensure reproducible results. also ensures that plotted timeseries is the same used to get sax
     np.random.seed(seed=133742)
     x = np.arange(n)
     # generate timeseries that represents an exponential growth with added gaussian noise
-    y = np.array([100*np.exp(0.005 * (i + np.random.normal(0, 10))) for i in x])
+    y = fct(n) + np.random.normal(0, 10, size=n)
     return x, y
 
 def get_paa(ts, w):
@@ -86,22 +92,28 @@ app.layout = html.Div(children=[
     html.Div(style={"margin": "30px"}),
 
     dcc.Graph(
-        id='graph'
+        id='graph-exponential'
     ),
-    html.Div(id='display-sax-representation')
+    html.Div(id='display-sax-representation-exponential'),
+    
+    dcc.Graph(
+        id='graph-sinus'
+    ),
+    html.Div(id='display-sax-representation-sinus'),
+    
 ])
 
 
 # ---------- callbacks / add reactivity ----------
 @app.callback(
-    dash.dependencies.Output('graph', 'figure'),
+    dash.dependencies.Output('graph-exponential', 'figure'),
     [
         dash.dependencies.Input('dataset-size-slider', 'value'),
         dash.dependencies.Input('paa-batches-slider', 'value'),
     ]
 )
-def update_graph(n, w):
-    x, y = get_timeseries(n=n)
+def update_graph_exp(n, w):
+    x, y = get_timeseries(n=n, fct=exponential)
     ts_paa = get_paa(ts=y, w=w)
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=x, y=y, mode="lines+markers", name="timeseries"))
@@ -114,17 +126,52 @@ def update_graph(n, w):
     return fig
 
 @app.callback(
-    dash.dependencies.Output('display-sax-representation', 'children'),
+    dash.dependencies.Output('display-sax-representation-exponential', 'children'),
     [
         dash.dependencies.Input('dataset-size-slider', 'value'),
         dash.dependencies.Input('paa-batches-slider', 'value'),
         dash.dependencies.Input('sax-symbols-slider', 'value'),
     ]
 )
-def set_display_sax_repr(n, w, a):
-    _, y = get_timeseries(n=n)
+def set_display_sax_repr_exp(n, w, a):
+    _, y = get_timeseries(n=n, fct=exponential)
     sax_repr = get_sax_repr(ts=y, w=w, a=a)
     return f"The SAX representation of the timeseries is: {sax_repr}. With frequencies of letters: {get_sax_symbol_frequency(sax_repr)}"
+
+@app.callback(
+    dash.dependencies.Output('graph-sinus', 'figure'),
+    [
+        dash.dependencies.Input('dataset-size-slider', 'value'),
+        dash.dependencies.Input('paa-batches-slider', 'value'),
+    ]
+)
+def update_graph_sin(n, w):
+    x, y = get_timeseries(n=n, fct=sinus)
+    ts_paa = get_paa(ts=y, w=w)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=y, mode="lines+markers", name="timeseries"))
+    fig.add_trace(go.Scatter(x=x, y=ts_paa, mode="lines", name="paa"))
+    fig.update_layout(
+        title={'text': 'Arbitrary Timeseries (Sine with Gaussian Noise) and a PAA Reduction'},
+        xaxis={'title': 'index'},
+        yaxis={'title': 'value'},
+    )
+    return fig
+
+@app.callback(
+    dash.dependencies.Output('display-sax-representation-sinus', 'children'),
+    [
+        dash.dependencies.Input('dataset-size-slider', 'value'),
+        dash.dependencies.Input('paa-batches-slider', 'value'),
+        dash.dependencies.Input('sax-symbols-slider', 'value'),
+    ]
+)
+def set_display_sax_repr_sin(n, w, a):
+    _, y = get_timeseries(n=n, fct=sinus)
+    sax_repr = get_sax_repr(ts=y, w=w, a=a)
+    return f"The SAX representation of the timeseries is: {sax_repr}. With frequencies of letters: {get_sax_symbol_frequency(sax_repr)}"
+
+
 
 
 # ---------- main ----------

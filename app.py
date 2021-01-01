@@ -52,6 +52,20 @@ def get_sax_repr(ts, w, a):
 def get_sax_symbol_frequency(word):
     return {key: word.count(key) for key in set(word)}
 
+def reduce_ts(ts, tol=0.1):
+    # TODO: comment
+    ts_fourier = np.fft.fft(ts)
+    threshold = tol*np.max(np.abs(ts_fourier))
+    ft_deflated = [[idx, t] for idx, t in enumerate(ts_fourier) if abs(t) >= threshold]
+    return ft_deflated, len(ts)
+
+def inflate_ts(ft, n):
+    # TODO: comment
+    ft_inflated = np.zeros(n).astype(np.complex64)
+    for idx, f in ft:
+        ft_inflated[idx] = f
+    return np.fft.ifft(ft_inflated)
+
 
 # ---------- app setup ----------
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']

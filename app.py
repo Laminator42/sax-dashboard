@@ -52,7 +52,7 @@ def get_sax_repr(ts, w, a):
 def get_sax_symbol_frequency(word):
     return {key: word.count(key) for key in set(word)}
 
-def reduce_ts(ts, tol=0.1):
+def deflate_ts(ts, tol=0.1):
     # TODO: comment
     ts_fourier = np.fft.fft(ts)
     threshold = tol*np.max(np.abs(ts_fourier))
@@ -64,7 +64,20 @@ def inflate_ts(ft, n):
     ft_inflated = np.zeros(n).astype(np.complex64)
     for idx, f in ft:
         ft_inflated[idx] = f
-    return np.fft.ifft(ft_inflated)
+    return np.fft.ifft(ft_inflated).astype(float)
+
+def transform_tolerance_slider_value(value):
+    return {
+                0: 1,
+                1: 0.3,
+                2: 0.1,
+                3: 0.03,
+                4: 0.01,
+                5: 0.003,
+                6: 0.001,
+                7: 0.0003,
+                8: 0.00001,
+            }[value]
 
 
 # ---------- app setup ----------
@@ -75,6 +88,7 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 
 app.layout = html.Div(children=[
+    # ---------- SAX ----------
     html.H1(children='SAX Sandbox'),
 
     html.Div(children=[
@@ -118,7 +132,7 @@ app.layout = html.Div(children=[
 
     html.Div(children=[
             dcc.Graph(
-                id='graph-exponential',
+                id='graph-exponential-sax',
                 className="eight columns"
             ),
             dcc.Graph(
@@ -131,11 +145,54 @@ app.layout = html.Div(children=[
     
     html.Div(children=[
             dcc.Graph(
-                id='graph-sinus',
+                id='graph-sinus-sax',
                 className="eight columns"
             ),
             dcc.Graph(
                 id='bar-sinus',
+                className="four columns"
+            ),
+        ],
+        className='row'
+    ),
+    
+    # ---------- FFT ----------
+    html.H1(children='FFT Sandbox'),
+
+    html.Div(children=[
+        html.Label('Tolerance (Frequencies lower than this fraction of maximum Amplitude are neglected after FFT)'),
+        dcc.Slider(
+            id="tolerance-slider",
+            min=0,
+            max=9,
+            step=1,
+            value=4,
+            marks={i: str(transform_tolerance_slider_value(i)) for i in range(9)},
+        ),
+    ]),
+
+    html.Div(style={"margin": "30px"}),
+
+    html.Div(children=[
+            dcc.Graph(
+                id='graph-exponential-fft',
+                className="eight columns"
+            ),
+            dcc.Graph(
+                id='freq-exponential',
+                className="four columns"
+            ),
+        ],
+        className='row'
+    ),
+    
+    html.Div(children=[
+            dcc.Graph(
+                id='graph-sinus-fft',
+                className="eight columns"
+            ),
+            dcc.Graph(
+                id='freq-sinus',
                 className="four columns"
             ),
         ],
@@ -146,7 +203,7 @@ app.layout = html.Div(children=[
 
 # ---------- callbacks / add reactivity ----------
 @app.callback(
-    dash.dependencies.Output('graph-exponential', 'figure'),
+    dash.dependencies.Output('graph-exponential-sax', 'figure'),
     [
         dash.dependencies.Input('dataset-size-slider', 'value'),
         dash.dependencies.Input('paa-batches-slider', 'value'),
@@ -156,7 +213,7 @@ def update_graph_exp(n, w):
     x, y = get_timeseries(n=n, fct=exponential)
     ts_paa = get_paa(ts=y, w=w)
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=x, y=y, mode="lines+markers", name="timeseries"))
+    fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="timeseries"))
     fig.add_trace(go.Scatter(x=x, y=ts_paa, mode="lines", name="paa"))
     fig.update_layout(
         title={'text': 'Arbitrary Timeseries (Exponential with Gaussian Noise) and a PAA Reduction'},
@@ -191,7 +248,7 @@ def update_bar_exp(n, w, a):
     return fig
 
 @app.callback(
-    dash.dependencies.Output('graph-sinus', 'figure'),
+    dash.dependencies.Output('graph-sinus-sax', 'figure'),
     [
         dash.dependencies.Input('dataset-size-slider', 'value'),
         dash.dependencies.Input('paa-batches-slider', 'value'),
@@ -201,7 +258,7 @@ def update_graph_sin(n, w):
     x, y = get_timeseries(n=n, fct=sinus)
     ts_paa = get_paa(ts=y, w=w)
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=x, y=y, mode="lines+markers", name="timeseries"))
+    fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="timeseries"))
     fig.add_trace(go.Scatter(x=x, y=ts_paa, mode="lines", name="paa"))
     fig.update_layout(
         title={'text': 'Arbitrary Timeseries (Sine with Gaussian Noise) and a PAA Reduction'},
@@ -233,6 +290,105 @@ def update_bar_sin(n, w, a):
         xaxis={'title': 'symbol'},
         yaxis={'title': 'frequency'},
     )
+    return fig
+
+@app.callback(
+    dash.dependencies.Output('graph-exponential-fft', 'figure'),
+    [
+        dash.dependencies.Input('dataset-size-slider', 'value'),
+        dash.dependencies.Input('tolerance-slider', 'value'),
+    ]
+)
+def update_graph_exp_fft(n, tol):
+    tol = transform_tolerance_slider_value(tol)
+    x, y = get_timeseries(n=n, fct=exponential)
+    
+    ft_deflated, size = deflate_ts(y, tol=tol)
+    y_retrieved = inflate_ts(ft_deflated, size)
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="timeseries"))
+    fig.add_trace(go.Scatter(x=x, y=y_retrieved, mode="lines", name="retrieved"))
+    fig.update_layout(
+        title={'text': f'Arbitrary Timeseries (Exponential with Gaussian Noise). Compressed to {len(ft_deflated)}/{n}'},
+        xaxis={'title': 'index'},
+        yaxis={'title': 'value'},
+    )
+    return fig
+
+@app.callback(
+    dash.dependencies.Output('freq-exponential', 'figure'),
+    [
+        dash.dependencies.Input('dataset-size-slider', 'value'),
+        dash.dependencies.Input('tolerance-slider', 'value'),
+    ]
+)
+def update_graph_exp_freq(n, tol):
+    tol = transform_tolerance_slider_value(tol)
+    x, y = get_timeseries(n=n, fct=exponential)
+    
+    ft = np.fft.fft(y)
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=np.abs(ft), mode="lines", name="fourier transform"))
+    fig.add_trace(go.Scatter(x=x, y=[tol*np.max(np.abs(ft)) for i in range(n)], mode="lines", name="threshold"))
+    fig.update_layout(
+        title={'text': 'Fourier transformed Timeseries'},
+        xaxis={'title': 'index'},
+        yaxis={'title': 'FFT(value)'},
+        legend={'yanchor': 'top', 'y': 0.99, 'xanchor': 'right', 'x': 0.99}
+    )
+    fig.update_yaxes(type='log')
+    return fig
+
+
+@app.callback(
+    dash.dependencies.Output('graph-sinus-fft', 'figure'),
+    [
+        dash.dependencies.Input('dataset-size-slider', 'value'),
+        dash.dependencies.Input('tolerance-slider', 'value'),
+    ]
+)
+def update_graph_sin_fft(n, tol):
+    tol = transform_tolerance_slider_value(tol)
+    x, y = get_timeseries(n=n, fct=sinus)
+    
+    ft_deflated, size = deflate_ts(y, tol=tol)
+    y_retrieved = inflate_ts(ft_deflated, size)
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="timeseries"))
+    fig.add_trace(go.Scatter(x=x, y=y_retrieved, mode="lines", name="retrieved"))
+    fig.update_layout(
+        title={'text': f'Arbitrary Timeseries (Sine with Gaussian Noise). Compressed to {len(ft_deflated)}/{n}'},
+        xaxis={'title': 'index'},
+        yaxis={'title': 'FFT(value)'},
+    )
+    return fig
+
+@app.callback(
+    dash.dependencies.Output('freq-sinus', 'figure'),
+    [
+        dash.dependencies.Input('dataset-size-slider', 'value'),
+        dash.dependencies.Input('tolerance-slider', 'value'),
+    ]
+)
+def update_graph_sin_freq(n, tol):
+    tol = transform_tolerance_slider_value(tol)
+    x, y = get_timeseries(n=n, fct=sinus)
+    
+    ft = np.fft.fft(y)
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=np.abs(ft), mode="lines", name="fourier transform"))
+    fig.add_trace(go.Scatter(x=x, y=[tol*np.max(np.abs(ft)) for i in range(n)], mode="lines", name="threshold"))
+    fig.update_layout(
+        title={'text': 'Fourier transformed Timeseries'},
+        xaxis={'title': 'index'},
+        yaxis={'title': 'value'},
+        legend={'yanchor': 'top', 'y': 0.99, 'xanchor': 'right', 'x': 0.99},
+    )
+    fig.update_yaxes(type='log')
     return fig
 
 

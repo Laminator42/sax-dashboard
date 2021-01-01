@@ -93,7 +93,7 @@ app.layout = html.Div(children=[
 
     html.Div(children=[
         html.Div(children=[
-            html.Label('Size of Dataset N'),
+            html.Label('size of dataset N'),
             dcc.Slider(
                 id="dataset-size-slider",
                 min=32,
@@ -104,7 +104,7 @@ app.layout = html.Div(children=[
             ),
         ], className="eight columns"),
         html.Div(children=[
-            html.Label('Number of PAA batches w'),
+            html.Label('number of PAA batches w'),
             # check for conistency if N%w != 0
             dcc.Slider(
                 id="paa-batches-slider",
@@ -116,7 +116,7 @@ app.layout = html.Div(children=[
             ),
         ], className="two columns"),
         html.Div(children=[
-            html.Label('Number of SAX symbols a'),
+            html.Label('number of SAX symbols a'),
             dcc.Slider(
                 id="sax-symbols-slider",
                 min=2,
@@ -160,7 +160,7 @@ app.layout = html.Div(children=[
     html.H1(children='FFT Sandbox'),
 
     html.Div(children=[
-        html.Label('Tolerance (Frequencies lower than this fraction of maximum Amplitude are neglected after FFT)'),
+        html.Label('tolerance (frequencies lower than this fraction of maximum amplitude are dropped after FFT)'),
         dcc.Slider(
             id="tolerance-slider",
             min=0,
@@ -216,7 +216,7 @@ def update_graph_exp(n, w):
     fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="timeseries"))
     fig.add_trace(go.Scatter(x=x, y=ts_paa, mode="lines", name="paa"))
     fig.update_layout(
-        title={'text': 'Arbitrary Timeseries (Exponential with Gaussian Noise) and a PAA Reduction'},
+        title={'text': 'Arbitrary timeseries (exponential with gaussian noise) and respective PAA reduction'},
         xaxis={'title': 'index'},
         yaxis={'title': 'value'},
     )
@@ -241,7 +241,7 @@ def update_bar_exp(n, w, a):
         text=y,
     )])
     fig.update_layout(
-        title={'text': f'Histogram of SAX Symbols. SAX String: {sax_repr}'},
+        title={'text': f'Frequency of SAX symbols. SAX string: {sax_repr}'},
         xaxis={'title': 'symbol'},
         yaxis={'title': 'frequency'},
     )
@@ -261,7 +261,7 @@ def update_graph_sin(n, w):
     fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="timeseries"))
     fig.add_trace(go.Scatter(x=x, y=ts_paa, mode="lines", name="paa"))
     fig.update_layout(
-        title={'text': 'Arbitrary Timeseries (Sine with Gaussian Noise) and a PAA Reduction'},
+        title={'text': 'Arbitrary timeseries (sine with gaussian noise) and respective PAA reduction'},
         xaxis={'title': 'index'},
         yaxis={'title': 'value'},
     )
@@ -286,7 +286,7 @@ def update_bar_sin(n, w, a):
         text=y,
     )])
     fig.update_layout(
-        title={'text': f'Histogram of SAX Symbols. SAX String: {sax_repr}'},
+        title={'text': f'Frequency of SAX symbols. SAX string: {sax_repr}'},
         xaxis={'title': 'symbol'},
         yaxis={'title': 'frequency'},
     )
@@ -310,7 +310,7 @@ def update_graph_exp_fft(n, tol):
     fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="timeseries"))
     fig.add_trace(go.Scatter(x=x, y=y_retrieved, mode="lines", name="retrieved"))
     fig.update_layout(
-        title={'text': f'Arbitrary Timeseries (Exponential with Gaussian Noise). Compressed to {len(ft_deflated)}/{n}'},
+        title={'text': f'Arbitrary timeseries (exponential with gaussian noise). Compressed to {len(ft_deflated)}/{n} ({round(len(ft_deflated)/n*100, 2)}%)'},
         xaxis={'title': 'index'},
         yaxis={'title': 'value'},
     )
@@ -333,7 +333,7 @@ def update_graph_exp_freq(n, tol):
     fig.add_trace(go.Scatter(x=x, y=np.abs(ft), mode="lines", name="fourier transform"))
     fig.add_trace(go.Scatter(x=x, y=[tol*np.max(np.abs(ft)) for i in range(n)], mode="lines", name="threshold"))
     fig.update_layout(
-        title={'text': 'Fourier transformed Timeseries'},
+        title={'text': 'Fourier transformed timeseries'},
         xaxis={'title': 'index'},
         yaxis={'title': 'FFT(value)'},
         legend={'yanchor': 'top', 'y': 0.99, 'xanchor': 'right', 'x': 0.99}
@@ -360,9 +360,9 @@ def update_graph_sin_fft(n, tol):
     fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="timeseries"))
     fig.add_trace(go.Scatter(x=x, y=y_retrieved, mode="lines", name="retrieved"))
     fig.update_layout(
-        title={'text': f'Arbitrary Timeseries (Sine with Gaussian Noise). Compressed to {len(ft_deflated)}/{n}'},
+        title={'text': f'Arbitrary timeseries (sine with gaussian noise). Compressed to {len(ft_deflated)}/{n} ({round(len(ft_deflated)/n*100, 2)}%)'},
         xaxis={'title': 'index'},
-        yaxis={'title': 'FFT(value)'},
+        yaxis={'title': 'value'},
     )
     return fig
 
@@ -383,9 +383,9 @@ def update_graph_sin_freq(n, tol):
     fig.add_trace(go.Scatter(x=x, y=np.abs(ft), mode="lines", name="fourier transform"))
     fig.add_trace(go.Scatter(x=x, y=[tol*np.max(np.abs(ft)) for i in range(n)], mode="lines", name="threshold"))
     fig.update_layout(
-        title={'text': 'Fourier transformed Timeseries'},
+        title={'text': 'Fourier transformed timeseries'},
         xaxis={'title': 'index'},
-        yaxis={'title': 'value'},
+        yaxis={'title': 'FFT(value)'},
         legend={'yanchor': 'top', 'y': 0.99, 'xanchor': 'right', 'x': 0.99},
     )
     fig.update_yaxes(type='log')

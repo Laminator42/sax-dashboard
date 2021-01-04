@@ -19,24 +19,30 @@ from saxpy.alphabet import cuts_for_asize
 
 
 # ---------- utility functions ----------
-def exponential(n):
-    return np.array([100*np.exp(0.005 * i) for i in range(n)])
+def sine(A, T, c, size):
+    return np.array([A*np.sin(2*np.pi/T * i) + c for i in range(size)])
 
-def sinus(n):
-    return np.array([123*np.sin(2*np.pi/200 * i) + 42 for i in range(n)])
+def exponential(A, k, c, size):
+    return np.array([A*np.exp(k * i) + c for i in range(size)])
 
-def get_timeseries(n, fct):
+def get_timeseries(n, mode):
     # ensure reproducible results. also ensures that plotted timeseries is the same used to get sax
     np.random.seed(seed=133742)
     x = np.arange(n)
-    # generate timeseries that represents an exponential growth with added gaussian noise
-    y = fct(n) + np.random.normal(0, 10, size=n)
+    if mode=="nonseasonal":
+        # hard coded test data for non-seasonal data
+        y = exponential(A=100, k=0.005, c=0, size=n)
+    elif mode=="seasonal":
+        # hard coded test data for seasonal data
+        y = sine(A=123, T=200, c=42, size=n) + sine(A=20, T=10, c=0, size=n) + sine(A=10, T=50, c=0, size=n) + sine(A=22, T=8, c=0, size=n)
+    else:
+        raise ValueError("please choose seasonal or nonseasonal mode.")
+    y += np.random.normal(0, 10, size=n)    # add gaussian noise
     return x, y
 
 def get_paa(ts, w):
     # apply piecewise aggregate approximation in w dimensions
     ts_paa = paa(ts, w)
-    # TODO: check if repeats are appropriate
     return np.repeat(ts_paa, len(ts)//w)
 
 def get_sax_repr(ts, w, a):
@@ -53,17 +59,22 @@ def get_sax_symbol_frequency(word):
     return {key: word.count(key) for key in set(word)}
 
 def deflate_ts(ts, tol=0.1):
-    # TODO: comment
+    # fourier transform timeseries
     ts_fourier = np.fft.fft(ts)
+    # compute threshold as fraction of maximum absolute amplitude
+    # use absolute since fourier transformed values are complex
     threshold = tol*np.max(np.abs(ts_fourier))
+    # only get elements above threshold and save their respective indices
     ft_deflated = [[idx, t] for idx, t in enumerate(ts_fourier) if abs(t) >= threshold]
     return ft_deflated, len(ts)
 
 def inflate_ts(ft, n):
-    # TODO: comment
+    # create an array containing complex valued zeros
     ft_inflated = np.zeros(n).astype(np.complex64)
+    # only fill elements of non-neglected frequencies
     for idx, f in ft:
         ft_inflated[idx] = f
+    # inverse transform to original space and convert back to floats
     return np.fft.ifft(ft_inflated).astype(float)
 
 def transform_tolerance_slider_value(value):
@@ -210,7 +221,7 @@ app.layout = html.Div(children=[
     ]
 )
 def update_graph_exp(n, w):
-    x, y = get_timeseries(n=n, fct=exponential)
+    x, y = get_timeseries(n=n, mode="nonseasonal")
     ts_paa = get_paa(ts=y, w=w)
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="timeseries"))
@@ -231,7 +242,7 @@ def update_graph_exp(n, w):
     ]
 )
 def update_bar_exp(n, w, a):
-    _, y = get_timeseries(n=n, fct=exponential)
+    _, y = get_timeseries(n=n, mode="nonseasonal")
     sax_repr = get_sax_repr(ts=y, w=w, a=a)
     hist = pd.Series([c for c in sax_repr]).value_counts().sort_index()
 
@@ -255,7 +266,7 @@ def update_bar_exp(n, w, a):
     ]
 )
 def update_graph_sin(n, w):
-    x, y = get_timeseries(n=n, fct=sinus)
+    x, y = get_timeseries(n=n, mode="seasonal")
     ts_paa = get_paa(ts=y, w=w)
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="timeseries"))
@@ -276,7 +287,7 @@ def update_graph_sin(n, w):
     ]
 )
 def update_bar_sin(n, w, a):
-    _, y = get_timeseries(n=n, fct=sinus)
+    _, y = get_timeseries(n=n, mode="seasonal")
     sax_repr = get_sax_repr(ts=y, w=w, a=a)
     hist = pd.Series([c for c in sax_repr]).value_counts().sort_index()
 
@@ -301,7 +312,7 @@ def update_bar_sin(n, w, a):
 )
 def update_graph_exp_fft(n, tol):
     tol = transform_tolerance_slider_value(tol)
-    x, y = get_timeseries(n=n, fct=exponential)
+    x, y = get_timeseries(n=n, mode="nonseasonal")
     
     ft_deflated, size = deflate_ts(y, tol=tol)
     y_retrieved = inflate_ts(ft_deflated, size)
@@ -325,7 +336,7 @@ def update_graph_exp_fft(n, tol):
 )
 def update_graph_exp_freq(n, tol):
     tol = transform_tolerance_slider_value(tol)
-    x, y = get_timeseries(n=n, fct=exponential)
+    x, y = get_timeseries(n=n, mode="nonseasonal")
     
     ft = np.fft.fft(y)
     
@@ -351,7 +362,7 @@ def update_graph_exp_freq(n, tol):
 )
 def update_graph_sin_fft(n, tol):
     tol = transform_tolerance_slider_value(tol)
-    x, y = get_timeseries(n=n, fct=sinus)
+    x, y = get_timeseries(n=n, mode="seasonal")
     
     ft_deflated, size = deflate_ts(y, tol=tol)
     y_retrieved = inflate_ts(ft_deflated, size)
@@ -375,7 +386,7 @@ def update_graph_sin_fft(n, tol):
 )
 def update_graph_sin_freq(n, tol):
     tol = transform_tolerance_slider_value(tol)
-    x, y = get_timeseries(n=n, fct=sinus)
+    x, y = get_timeseries(n=n, mode="seasonal")
     
     ft = np.fft.fft(y)
     
